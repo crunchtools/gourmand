@@ -2,7 +2,7 @@ FROM quay.io/hummingbird/rust:latest-builder AS builder
 
 RUN cargo install --git https://codeberg.org/mattdm/gourmand.git
 
-FROM quay.io/hummingbird/base:latest
+FROM quay.io/hummingbird/rust:latest
 
 LABEL maintainer="fatherlinux <scott.mccarty@crunchtools.com>"
 LABEL description="Pre-built gourmand binary for AI slop detection in CI pipelines"
