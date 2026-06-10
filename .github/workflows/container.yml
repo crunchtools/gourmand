@@ -7,9 +7,6 @@ on:
   pull_request:
     branches: [main]
   workflow_dispatch:
-  schedule:
-    - cron: '0 6 * * 1'
-
 env:
   QUAY_IMAGE: quay.io/crunchtools/gourmand
   GHCR_IMAGE: ghcr.io/crunchtools/gourmand
