@@ -1,7 +1,7 @@
 GNU AFFERO GENERAL PUBLIC LICENSE
 Version 3, 19 November 2007
 
-This container image packages gourmand (https://codeberg.org/mattdm/gourmand)
+This container image packages gourmand (https://gitlab.com/mattdm/gourmand)
 as a pre-built binary for use in CI pipelines. The container image build
 infrastructure (Containerfile, CI workflows) is licensed under AGPL-3.0-or-later.
 

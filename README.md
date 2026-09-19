@@ -1,6 +1,6 @@
 # gourmand container
 
-Pre-built container image for [gourmand](https://codeberg.org/mattdm/gourmand), an AI-slop detector for codebases. Saves ~5 minutes of Rust compilation per CI run.
+Pre-built container image for [gourmand](https://gitlab.com/mattdm/gourmand), an AI-slop detector for codebases. Saves ~5 minutes of Rust compilation per CI run.
 
 ## Pull
 

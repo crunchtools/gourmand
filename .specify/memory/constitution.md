@@ -8,7 +8,7 @@
 
 ## Purpose
 
-Pre-built container image for [gourmand](https://codeberg.org/mattdm/gourmand), an AI-slop detector for codebases. Eliminates the need to compile gourmand from Rust source in every CI pipeline run.
+Pre-built container image for [gourmand](https://gitlab.com/mattdm/gourmand), an AI-slop detector for codebases. Eliminates the need to compile gourmand from Rust source in every CI pipeline run.
 
 ## License
 
