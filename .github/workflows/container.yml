@@ -42,7 +42,11 @@ jobs:
             type=ref,event=pr
             type=semver,pattern={{version}}
             type=semver,pattern={{major}}.{{minor}}
-            type=raw,value=latest,enable={{is_default_branch}}
+            # Only a push to the default BRANCH moves :latest. metadata-action's
+            # {{is_default_branch}} also evaluates true on tag pushes, so a release
+            # tag silently republished :latest -- which is how RT #1482's v1.0.0 tag
+            # broke the Code Quality gate in every repo still pinned to :latest.
+            type=raw,value=latest,enable=${{ github.ref_type == 'branch' && github.ref_name == github.event.repository.default_branch }}
 
       - name: Build and push
         uses: docker/build-push-action@v6
@@ -98,7 +102,11 @@ jobs:
             type=ref,event=pr
             type=semver,pattern={{version}}
             type=semver,pattern={{major}}.{{minor}}
-            type=raw,value=latest,enable={{is_default_branch}}
+            # Only a push to the default BRANCH moves :latest. metadata-action's
+            # {{is_default_branch}} also evaluates true on tag pushes, so a release
+            # tag silently republished :latest -- which is how RT #1482's v1.0.0 tag
+            # broke the Code Quality gate in every repo still pinned to :latest.
+            type=raw,value=latest,enable=${{ github.ref_type == 'branch' && github.ref_name == github.event.repository.default_branch }}
 
       - name: Build and push
         uses: docker/build-push-action@v6
