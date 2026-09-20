@@ -5,15 +5,18 @@ Pre-built container image for [gourmand](https://gitlab.com/mattdm/gourmand), an
 ## Pull
 
 ```bash
-podman pull quay.io/crunchtools/gourmand
+podman pull quay.io/crunchtools/gourmand:1.0.0
 ```
+
+Pin the tag. `:latest` currently serves the previous build (upstream `v0.1.0`)
+while consumers migrate to `1.0.0` (upstream `v0.16.5`) -- see CHANGELOG.md.
 
 ## Usage
 
 ### Local
 
 ```bash
-podman run --rm -v .:/workspace:Z quay.io/crunchtools/gourmand --full /workspace
+podman run --rm -v .:/workspace:Z quay.io/crunchtools/gourmand:1.0.0 check --full /workspace
 ```
 
 ### GitLab CI
@@ -21,9 +24,9 @@ podman run --rm -v .:/workspace:Z quay.io/crunchtools/gourmand --full /workspace
 ```yaml
 gourmand:
   stage: test
-  image: quay.io/crunchtools/gourmand
+  image: quay.io/crunchtools/gourmand:1.0.0
   script:
-    - gourmand --full .
+    - gourmand check --full .
 ```
 
 ### GitHub Actions
@@ -31,7 +34,19 @@ gourmand:
 ```yaml
 - name: Run gourmand
   run: |
-    docker run --rm -v ${{ github.workspace }}:/workspace quay.io/crunchtools/gourmand --full /workspace
+    docker run --rm -v ${{ github.workspace }}:/workspace quay.io/crunchtools/gourmand:1.0.0 check --full /workspace
+```
+
+## GitHub Actions (crunchtools repos)
+
+Do not copy the snippet above into a crunchtools repo. Use the reusable
+workflow, which centralizes the image pin:
+
+```yaml
+jobs:
+  gourmand:
+    name: Code Quality (Gourmand)
+    uses: crunchtools/gatehouse/.github/workflows/gourmand.yml@v0.6.0
 ```
 
 ## License
