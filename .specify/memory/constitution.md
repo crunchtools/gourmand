@@ -1,63 +1,49 @@
 # gourmand Constitution
 
-> **Version:** 1.1.1
+> **Version:** 1.2.0
 > **Ratified:** 2026-03-11
+> **Amended:** 2026-10-02
 > **Status:** Active
-> **Inherits:** [crunchtools/constitution](https://github.com/crunchtools/constitution) v1.17.0
+> **Inherits:** [crunchtools/constitution](https://github.com/crunchtools/constitution) v1.18.0
 > **Profile:** Container Image
+
+This file holds what is specific to the gourmand image. The fleet rules and
+the Container Image profile apply at the inherited version and are checked
+against this repo's files by `constitution.yml`. They are not restated here.
 
 ## Purpose
 
-Pre-built container image for [gourmand](https://gitlab.com/mattdm/gourmand), an AI-slop detector for codebases. Eliminates the need to compile gourmand from Rust source in every CI pipeline run.
+Pre-built container image for [gourmand](https://gitlab.com/mattdm/gourmand),
+an AI-slop detector for codebases. Eliminates compiling gourmand from Rust
+source in every CI pipeline run. Published to `quay.io/crunchtools/gourmand`
+and `ghcr.io/crunchtools/gourmand`; the fleet's Gourmand gate runs from this
+image.
 
-## License
+## Upstream Pin
 
-AGPL-3.0-or-later
+- **Source:** `https://gitlab.com/mattdm/gourmand.git` (moved from Codeberg on
+  2026-08-20; the Codeberg URL 404s).
+- **Pin:** an upstream release tag (currently `v0.16.5`), installed with
+  `cargo install --tag`. Never a floating branch.
+- **Breaking upstream changes** (such as the v0.16 move to the `check`
+  subcommand and stricter config parsing) ship as a new image tag that
+  adopters pin to and cut over one repo at a time, not as a silent change to
+  what they already run (RT #1482).
 
-## Versioning
+## Build Stages
 
-Follow Semantic Versioning 2.0.0. MAJOR/MINOR/PATCH.
+| Stage | Image | Role |
+|-------|-------|------|
+| Builder | `quay.io/hummingbird/rust:latest-builder` | `cargo install` from the pinned tag; must satisfy upstream's minimum rustc |
+| Runtime | `quay.io/hummingbird/rust:latest` | carries only the `gourmand` binary at `/usr/local/bin/gourmand` |
 
-## Base Image
+`ENTRYPOINT ["gourmand"]`, default `CMD ["--help"]`.
 
-Hummingbird (`quay.io/hummingbird/base:latest`) — lightweight container base for static binaries.
+## History
 
-## Registry
-
-| Registry | Image |
-|----------|-------|
-| Quay.io | `quay.io/crunchtools/gourmand` |
-| GHCR | `ghcr.io/crunchtools/gourmand` |
-
-## Containerfile Conventions
-
-- Uses `Containerfile` (not Dockerfile)
-- Multi-stage build:
-  1. **Builder stage:** `rust:slim` — compiles gourmand from source via `cargo install`
-  2. **Runtime stage:** Hummingbird — copies only the static binary
-- LABEL with version and description metadata
-- ENTRYPOINT set to `gourmand` binary
-
-## Testing
-
-- **Build test**: CI builds the container image on every push to main
-- **Weekly rebuild**: Picks up base image and dependency updates every Monday 6 AM UTC
-
-## Quality Gates
-
-1. Build — CI builds the Containerfile successfully
-2. Weekly rebuild — cron job picks up base image updates
-
-## Usage
-
-```bash
-# Run gourmand against current directory
-podman run --rm -v .:/workspace:Z quay.io/crunchtools/gourmand --full /workspace
-
-# In GitLab CI
-gourmand:
-  stage: test
-  image: quay.io/crunchtools/gourmand
-  script:
-    - gourmand --full .
-```
+| Version | Date | Changes |
+|---------|------|---------|
+| 1.0.0 | 2026-03-09 | Initial constitution |
+| 1.1.0 | 2026-03-11 | Fixed to pass factory validation |
+| 1.1.1 | 2026-09-25 | Gatehouse review, triage and pre-commit gates |
+| 1.2.0 | 2026-10-02 | Manifest under constitution v1.18.0: fleet and profile restatement removed; build stages and upstream pin corrected to the Containerfile |
