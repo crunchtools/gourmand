@@ -8,6 +8,15 @@ All notable changes to this project are documented here. The format follows
 
 ### Added
 
+- A release of this image now **dispatches a python-sdlc rebuild**
+  (`.github/workflows/container.yml`). python-sdlc bakes this binary with
+  `COPY --from=gourmand`, so without the dispatch a release here left 35 Python
+  repos running the previous Gourmand locally while CI's reusable
+  `gourmand.yml` pulled this one -- local and CI disagreeing on the same diff,
+  which is the failure python-sdlc exists to remove. Constitution XII (v1.30.0)
+  makes it a rule; the Container Image profile already required it of any image
+  others build `FROM`. `crunchtools/constitution`'s `validate-cascade` check is
+  what found the missing edge.
 - `com.crunchtools.gourmand.upstream` image label naming the bundled upstream
   gourmand version; the version now lives in one `ARG UPSTREAM_VERSION` in the
   Containerfile.
