@@ -1,3 +1,6 @@
+# Single source of truth for the upstream gourmand version. CI parses this line.
+ARG UPSTREAM_VERSION=0.16.5
+
 FROM quay.io/hummingbird/rust:latest-builder AS builder
 
 # Upstream moved from Codeberg to GitLab on 2026-08-20 (commit 234c1e1c,
@@ -22,11 +25,14 @@ FROM quay.io/hummingbird/rust:latest-builder AS builder
 # Adopters cut over one repo at a time via gatehouse v0.6.0; see RT #1482.
 #
 # Upstream requires rustc >= 1.95; the builder image above ships 1.98.1.
+ARG UPSTREAM_VERSION
 RUN cargo install --git https://gitlab.com/mattdm/gourmand.git \
-    --tag v0.16.5
+    --tag "v${UPSTREAM_VERSION}"
 
 FROM quay.io/hummingbird/rust:latest
 
+ARG UPSTREAM_VERSION
+LABEL com.crunchtools.gourmand.upstream="${UPSTREAM_VERSION}"
 LABEL maintainer="fatherlinux <scott.mccarty@crunchtools.com>"
 LABEL description="Pre-built gourmand binary for AI slop detection in CI pipelines"
 LABEL org.opencontainers.image.source=https://github.com/crunchtools/gourmand
