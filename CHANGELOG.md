@@ -6,6 +6,12 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+### Added
+
+- `com.crunchtools.gourmand.upstream` image label naming the bundled upstream
+  gourmand version; the version now lives in one `ARG UPSTREAM_VERSION` in the
+  Containerfile.
+
 ### Changed
 
 - Constitution is now a v1.18.0 manifest: it holds only what is specific to
