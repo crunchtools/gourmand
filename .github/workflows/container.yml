@@ -1,162 +1,30 @@
-name: Build and Push Container Image
-
+name: Container
 on:
+  pull_request:
   push:
     branches: [main]
     tags: ["v*"]
-  pull_request:
-    branches: [main]
+  schedule:
+    - cron: "17 5 * * 1"
   workflow_dispatch:
-env:
-  QUAY_IMAGE: quay.io/crunchtools/gourmand
-  GHCR_IMAGE: ghcr.io/crunchtools/gourmand
-
+permissions: {}
 jobs:
-  build-and-push-quay:
-    runs-on: ubuntu-latest
+  container:
+    uses: crunchtools/constitution/.github/workflows/container-release.yml@v1.39.1
     permissions:
       contents: read
-
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v7
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v4
-
-      - name: Log in to Quay.io
-        if: github.event_name != 'pull_request'
-        uses: docker/login-action@v4
-        with:
-          registry: quay.io
-          username: ${{ secrets.QUAY_USERNAME }}
-          password: ${{ secrets.QUAY_PASSWORD }}
-
-      - name: Extract metadata
-        id: meta
-        uses: docker/metadata-action@v6
-        with:
-          images: ${{ env.QUAY_IMAGE }}
-          tags: |
-            type=ref,event=branch
-            type=ref,event=pr
-            type=semver,pattern={{version}}
-            type=semver,pattern={{major}}.{{minor}}
-            # Only a push to the default BRANCH moves :latest. metadata-action's
-            # {{is_default_branch}} also evaluates true on tag pushes, so a release
-            # tag silently republished :latest -- which is how RT #1482's v1.0.0 tag
-            # broke the Code Quality gate in every repo still pinned to :latest.
-            type=raw,value=latest,enable=${{ github.ref_type == 'branch' && github.ref_name == github.event.repository.default_branch }}
-
-      - name: Build and push
-        uses: docker/build-push-action@v7
-        with:
-          context: .
-          file: ./Containerfile
-          push: ${{ github.event_name != 'pull_request' }}
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-
-      - name: Run Trivy vulnerability scanner
-        continue-on-error: true
-        if: github.event_name != 'pull_request'
-        uses: aquasecurity/trivy-action@v0.36.0
-        with:
-          image-ref: ${{ env.QUAY_IMAGE }}:latest
-          format: "table"
-          exit-code: "0"
-          severity: "CRITICAL,HIGH"
-          version: "v0.68.2"
-
-  build-and-push-ghcr:
-    runs-on: ubuntu-latest
-    needs: build-and-push-quay
-    if: github.event_name != 'pull_request'
-    permissions:
-      contents: read
-      packages: write
-
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v7
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v4
-
-      - name: Log in to GitHub Container Registry
-        uses: docker/login-action@v4
-        with:
-          registry: ghcr.io
-          username: ${{ github.repository_owner }}
-          password: ${{ github.token }}
-
-      - name: Extract metadata
-        id: meta
-        uses: docker/metadata-action@v6
-        with:
-          images: ${{ env.GHCR_IMAGE }}
-          tags: |
-            type=ref,event=branch
-            type=ref,event=pr
-            type=semver,pattern={{version}}
-            type=semver,pattern={{major}}.{{minor}}
-            # Only a push to the default BRANCH moves :latest. metadata-action's
-            # {{is_default_branch}} also evaluates true on tag pushes, so a release
-            # tag silently republished :latest -- which is how RT #1482's v1.0.0 tag
-            # broke the Code Quality gate in every repo still pinned to :latest.
-            type=raw,value=latest,enable=${{ github.ref_type == 'branch' && github.ref_name == github.event.repository.default_branch }}
-
-      - name: Build and push
-        uses: docker/build-push-action@v7
-        with:
-          context: .
-          file: ./Containerfile
-          push: true
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-
-  # python-sdlc BAKES this image's binary (`COPY --from=gourmand`), so a release
-  # here that nobody told it about leaves 35 Python repos running the previous
-  # Gourmand locally while CI's reusable `gourmand.yml` pulls this one. Local
-  # and CI then disagree on the same diff, which is the whole failure mode
-  # python-sdlc exists to remove.
-  #
-  # Constitution XII (v1.30.0) states it as a rule, and the Container Image
-  # profile already required it of any image others build FROM:
-  # "An image that downstream images build FROM dispatches their rebuild from
-  # the promote job, after it is promoted." Here that is after the GHCR push,
-  # the last thing that publishes.
-  dispatch-downstream:
-    name: Tell the SDLC images to rebuild
-    runs-on: ubuntu-latest
-    needs: build-and-push-ghcr
-    if: github.event_name == 'push'
-    permissions:
-      contents: read
-    steps:
-      # The crunchtools-ci App's token, not a personal one: it has its own rate
-      # limit, so a throttled account can't stop this step.
-      - name: Mint CI token
-        id: ci-token
-        uses: actions/create-github-app-token@v3
-        with:
-          client-id: ${{ vars.CRUNCHTOOLS_CI_CLIENT_ID }}
-          private-key: ${{ secrets.CRUNCHTOOLS_CI_APP_KEY }}
-          owner: crunchtools
-
-      # `|| echo` rather than a hard failure: the image is already published and
-      # correct at this point, so a rebuild nobody could be told about is a
-      # warning to act on, not a reason to fail a release that succeeded.
-      - name: Trigger downstream rebuilds
-        env:
-          GH_TOKEN: ${{ steps.ci-token.outputs.token }}
-        run: |
-          for repo in python-sdlc; do
-            gh api repos/crunchtools/$repo/dispatches \
-              -f event_type=parent-image-updated \
-              || echo "::warning::$repo was not told to rebuild; start its build by hand"
-          done
+      pull-requests: read
+    with:
+      image: quay.io/crunchtools/gourmand
+      boot: command
+      # Run the real entrypoint against a tiny fixture project: proves the
+      # binary starts, its libraries load, and `check --full` completes
+      # (exit 0) on a clean directory. A bare --help would not exercise the
+      # analysis path consumers use.
+      boot-command: bash tests/image/boot-gate.sh
+      cascade: true
+      downstream: python-sdlc
+    secrets:
+      QUAY_USERNAME: ${{ secrets.QUAY_USERNAME }}
+      QUAY_PASSWORD: ${{ secrets.QUAY_PASSWORD }}
+      CRUNCHTOOLS_CI_APP_KEY: ${{ secrets.CRUNCHTOOLS_CI_APP_KEY }}
