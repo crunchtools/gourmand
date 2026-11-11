@@ -4,7 +4,7 @@
 > **Ratified:** 2026-03-11
 > **Amended:** 2026-10-02
 > **Status:** Active
-> **Inherits:** [crunchtools/constitution](https://github.com/crunchtools/constitution) v1.31.0
+> **Inherits:** [crunchtools/constitution](https://github.com/crunchtools/constitution) v1.39.1
 > **Profile:** Container Image
 
 This file holds what is specific to the gourmand image. The fleet rules and
@@ -15,8 +15,7 @@ against this repo's files by `constitution.yml`. They are not restated here.
 
 Pre-built container image for [gourmand](https://gitlab.com/mattdm/gourmand),
 an AI-slop detector for codebases. Eliminates compiling gourmand from Rust
-source in every CI pipeline run. Published to `quay.io/crunchtools/gourmand`
-and `ghcr.io/crunchtools/gourmand`; the fleet's Gourmand gate runs from this
+source in every CI pipeline run. Published to `quay.io/crunchtools/gourmand`; the fleet's Gourmand gate runs from this
 image.
 
 ## Upstream Pin
