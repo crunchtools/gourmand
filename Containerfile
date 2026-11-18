@@ -37,14 +37,15 @@ FROM quay.io/hummingbird/rust:latest-builder AS builder
 #         silently, so an exception written for one finding suppressed every
 #         finding of that check in the file.
 ARG UPSTREAM_VERSION
-COPY patches/ /tmp/patches/
+WORKDIR /build
+COPY patches/ patches/
 RUN git clone --quiet --depth 1 --branch "v${UPSTREAM_VERSION}" \
-        https://gitlab.com/mattdm/gourmand.git /tmp/gourmand \
-    && git -C /tmp/gourmand apply --verbose /tmp/patches/*.patch \
+        https://gitlab.com/mattdm/gourmand.git gourmand \
+    && git -C gourmand apply --verbose ../patches/*.patch \
     && CARGO_PROFILE_TEST_DEBUG=0 cargo test --locked --lib -j 2 \
-        --manifest-path /tmp/gourmand/Cargo.toml -p gourmand-core -p gourmand-checks -- \
+        --manifest-path gourmand/Cargo.toml -p gourmand-core -p gourmand-checks -- \
         pattern_exception mentions_matches exception_with_pattern without_pattern \
-    && cargo install --locked --path /tmp/gourmand/crates/gourmand
+    && cargo install --locked --path gourmand/crates/gourmand
 
 FROM quay.io/hummingbird/rust:latest
 
