@@ -41,10 +41,12 @@ WORKDIR /build
 COPY patches/ patches/
 RUN git clone --quiet --depth 1 --branch "v${UPSTREAM_VERSION}" \
         https://gitlab.com/mattdm/gourmand.git gourmand \
-    && git -C gourmand apply --verbose ../patches/*.patch \
+    && git -C gourmand apply --verbose "$PWD"/patches/*.patch \
     && CARGO_PROFILE_TEST_DEBUG=0 cargo test --locked --lib -j 2 \
         --manifest-path gourmand/Cargo.toml -p gourmand-core -p gourmand-checks -- \
         pattern_scoped \
+    && CARGO_PROFILE_TEST_DEBUG=0 cargo test --locked -j 2 \
+        --manifest-path gourmand/Cargo.toml -p gourmand --bin gourmand -- pattern_scoped \
     && cargo install --locked --path gourmand/crates/gourmand
 
 FROM quay.io/hummingbird/rust:latest
