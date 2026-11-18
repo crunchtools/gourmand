@@ -1,4 +1,4 @@
-From e1a25d8685a508176ecf6ddaf07eb5b949f30734 Mon Sep 17 00:00:00 2001
+From 45c53547334e7162edfa14a38269db391a1b4bd3 Mon Sep 17 00:00:00 2001
 From: Crunchtools <noreply@crunchtools.com>
 Date: Wed, 18 Nov 2026 04:25:17 +0000
 Subject: [PATCH] Honour `pattern` on exception entries
@@ -21,7 +21,7 @@ triggers the file-level skip path.
  crates/gourmand-checks/src/context/mod.rs     | 124 ++++++++++++++++--
  crates/gourmand-core/src/config/mod.rs        |   1 +
  crates/gourmand-core/src/config/models.rs     |  47 +++++++
- crates/gourmand-core/src/violation.rs         |  27 ++++
+ crates/gourmand-core/src/violation.rs         |  37 ++++++
  crates/gourmand/src/audit/full.rs             |   8 +-
  crates/gourmand/src/audit/ledger_io.rs        |   2 +
  crates/gourmand/src/audit/migrate_legacy.rs   |   2 +
@@ -30,7 +30,7 @@ triggers the file-level skip path.
  crates/gourmand/src/main.rs                   |   3 +
  crates/gourmand/src/migrate.rs                |   7 +-
  crates/gourmand/src/migrate_format.rs         |   3 +
- 21 files changed, 225 insertions(+), 10 deletions(-)
+ 21 files changed, 235 insertions(+), 10 deletions(-)
 
 diff --git a/crates/gourmand-checks/src/checks/copy_paste_detection.rs b/crates/gourmand-checks/src/checks/copy_paste_detection.rs
 index 3624d85..3b7bfe7 100644
@@ -574,10 +574,10 @@ index 954bb27..b244f79 100644
          };
  
 diff --git a/crates/gourmand-core/src/violation.rs b/crates/gourmand-core/src/violation.rs
-index a5d66fd..eb6ee15 100644
+index a5d66fd..c58e7a9 100644
 --- a/crates/gourmand-core/src/violation.rs
 +++ b/crates/gourmand-core/src/violation.rs
-@@ -86,6 +86,15 @@ impl Violation {
+@@ -86,6 +86,19 @@ impl Violation {
          self.item = Some(name.into());
          self
      }
@@ -586,14 +586,18 @@ index a5d66fd..eb6ee15 100644
 +    ///
 +    /// Used for `pattern`-scoped exception matching: the pattern names the
 +    /// finding (a function, a hook id, a suppression comment), not the file.
++    /// An empty needle mentions nothing: `pattern = ""` would otherwise
++    /// suppress the whole file while looking narrow.
 +    #[must_use]
 +    pub fn mentions(&self, needle: &str) -> bool {
-+        self.message.contains(needle) || self.item.as_deref().is_some_and(|i| i.contains(needle))
++        !needle.is_empty()
++            && (self.message.contains(needle)
++                || self.item.as_deref().is_some_and(|i| i.contains(needle)))
 +    }
  }
  
  impl std::fmt::Display for Violation {
-@@ -132,6 +141,24 @@ mod tests {
+@@ -132,6 +145,30 @@ mod tests {
          assert!(v.item.is_none());
      }
  
@@ -613,6 +617,12 @@ index a5d66fd..eb6ee15 100644
 +        let v = Violation::new("lib.py", 3, "helper called once").with_item("Parser._poll");
 +        assert!(v.mentions("_poll"));
 +        assert!(!v.mentions("_units"));
++    }
++
++    #[test]
++    fn pattern_scoped_empty_needle_mentions_nothing() {
++        let v = Violation::new("lib.py", 3, "helper called once").with_item("Parser._poll");
++        assert!(!v.mentions(""));
 +    }
 +
      #[test]
