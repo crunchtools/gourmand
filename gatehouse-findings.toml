@@ -1,0 +1,7 @@
+[[findings]]
+agent = "bugs"
+category = "bug"
+file = "Containerfile"
+evidence = "&& CARGO_PROFILE_TEST_DEBUG=0 cargo test --locked --lib -j 2 \\\n        --manifest-path /tmp/gourmand/Cargo.toml -p gourmand-core -p gourmand-checks -- \\\n        pattern_exception mentions_matches exception_with_pattern without_pattern"
+status = "not-a-bug"
+reason = "libtest takes any number of positional filters and runs tests matching any of them; this exact command ran in the builder stage and reported 3 passed in gourmand-checks and 4 passed in gourmand-core."
