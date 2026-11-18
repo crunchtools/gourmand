@@ -1,0 +1,798 @@
+From a935e19fd47881845a5080a34c8ac8326d21eaa7 Mon Sep 17 00:00:00 2001
+From: Crunchtools <noreply@crunchtools.com>
+Date: Wed, 18 Nov 2026 04:25:17 +0000
+Subject: [PATCH] Honour `pattern` on exception entries
+
+An exception's `pattern` key was dropped by serde, so an entry written for
+one finding suppressed every finding of that check in the file. Treat it as
+a granular selector: the exception applies only to violations whose item or
+message contains the pattern as a literal substring, and it no longer
+triggers the file-level skip path.
+---
+ .../src/checks/copy_paste_detection.rs        |   1 +
+ .../src/checks/hyperbolic_language.rs         |   1 +
+ .../src/checks/lint_suppression.rs            |   1 +
+ .../src/checks/linter_configuration.rs        |   1 +
+ .../src/checks/redundant_map_err.rs           |   1 +
+ .../src/checks/reexport_stubs.rs              |   1 +
+ .../src/checks/test_skip_evasion.rs           |   1 +
+ .../src/checks/trivial_type_aliases.rs        |   1 +
+ .../src/checks/unhelpful_expect.rs            |   1 +
+ crates/gourmand-checks/src/context/mod.rs     | 124 ++++++++++++++++--
+ crates/gourmand-core/src/config/mod.rs        |   1 +
+ crates/gourmand-core/src/config/models.rs     |  47 +++++++
+ crates/gourmand-core/src/violation.rs         |  27 ++++
+ crates/gourmand/src/audit/full.rs             |   8 +-
+ crates/gourmand/src/audit/ledger_io.rs        |   2 +
+ crates/gourmand/src/audit/migrate_legacy.rs   |   2 +
+ crates/gourmand/src/audit/predicates.rs       |   1 +
+ crates/gourmand/src/audit/show_next.rs        |   1 +
+ crates/gourmand/src/main.rs                   |   3 +
+ crates/gourmand/src/migrate.rs                |   7 +-
+ crates/gourmand/src/migrate_format.rs         |   3 +
+ 21 files changed, 225 insertions(+), 10 deletions(-)
+
+diff --git a/crates/gourmand-checks/src/checks/copy_paste_detection.rs b/crates/gourmand-checks/src/checks/copy_paste_detection.rs
+index 3624d85..3b7bfe7 100644
+--- a/crates/gourmand-checks/src/checks/copy_paste_detection.rs
++++ b/crates/gourmand-checks/src/checks/copy_paste_detection.rs
+@@ -2040,6 +2040,7 @@ mod tests {
+             classification: Some(ExceptionClassification::ByDesign),
+             last_reviewed: None,
+             line: None,
++            pattern: None,
+             source_file: None,
+         };
+         let exc = Exceptions {
+diff --git a/crates/gourmand-checks/src/checks/hyperbolic_language.rs b/crates/gourmand-checks/src/checks/hyperbolic_language.rs
+index 1644ea2..5adcd9c 100644
+--- a/crates/gourmand-checks/src/checks/hyperbolic_language.rs
++++ b/crates/gourmand-checks/src/checks/hyperbolic_language.rs
+@@ -461,6 +461,7 @@ mod tests {
+             classification: Some(ExceptionClassification::ByDesign),
+             last_reviewed: None,
+             line: None,
++            pattern: None,
+             source_file: None,
+         };
+ 
+diff --git a/crates/gourmand-checks/src/checks/lint_suppression.rs b/crates/gourmand-checks/src/checks/lint_suppression.rs
+index ed3502d..de5ab41 100644
+--- a/crates/gourmand-checks/src/checks/lint_suppression.rs
++++ b/crates/gourmand-checks/src/checks/lint_suppression.rs
+@@ -415,6 +415,7 @@ mod tests {
+             classification: Some(ExceptionClassification::ByDesign),
+             last_reviewed: None,
+             line: None,
++            pattern: None,
+             source_file: None,
+         };
+ 
+diff --git a/crates/gourmand-checks/src/checks/linter_configuration.rs b/crates/gourmand-checks/src/checks/linter_configuration.rs
+index 9c79686..c0860d2 100644
+--- a/crates/gourmand-checks/src/checks/linter_configuration.rs
++++ b/crates/gourmand-checks/src/checks/linter_configuration.rs
+@@ -786,6 +786,7 @@ mod tests {
+                 last_reviewed: None,
+                 item: None,
+                 line: None,
++                pattern: None,
+                 source_file: None,
+             }],
+             library_crates: Vec::new(),
+diff --git a/crates/gourmand-checks/src/checks/redundant_map_err.rs b/crates/gourmand-checks/src/checks/redundant_map_err.rs
+index 27b38fe..fc29102 100644
+--- a/crates/gourmand-checks/src/checks/redundant_map_err.rs
++++ b/crates/gourmand-checks/src/checks/redundant_map_err.rs
+@@ -671,6 +671,7 @@ mod tests {
+             classification: Some(ExceptionClassification::ByDesign),
+             last_reviewed: None,
+             line: None,
++            pattern: None,
+             source_file: None,
+         };
+         let exc = Exceptions {
+diff --git a/crates/gourmand-checks/src/checks/reexport_stubs.rs b/crates/gourmand-checks/src/checks/reexport_stubs.rs
+index e9ab186..ab6454f 100644
+--- a/crates/gourmand-checks/src/checks/reexport_stubs.rs
++++ b/crates/gourmand-checks/src/checks/reexport_stubs.rs
+@@ -260,6 +260,7 @@ mod tests {
+             classification: Some(ExceptionClassification::ByDesign),
+             last_reviewed: None,
+             line: None,
++            pattern: None,
+             source_file: None,
+         };
+         let exc = Exceptions {
+diff --git a/crates/gourmand-checks/src/checks/test_skip_evasion.rs b/crates/gourmand-checks/src/checks/test_skip_evasion.rs
+index f3bc176..e1d6718 100644
+--- a/crates/gourmand-checks/src/checks/test_skip_evasion.rs
++++ b/crates/gourmand-checks/src/checks/test_skip_evasion.rs
+@@ -437,6 +437,7 @@ mod tests {
+             last_reviewed: None,
+             item: Some("test_exempted".to_string()),
+             line: None,
++            pattern: None,
+             source_file: None,
+         };
+         let exceptions = Exceptions {
+diff --git a/crates/gourmand-checks/src/checks/trivial_type_aliases.rs b/crates/gourmand-checks/src/checks/trivial_type_aliases.rs
+index 235da5a..a141ca5 100644
+--- a/crates/gourmand-checks/src/checks/trivial_type_aliases.rs
++++ b/crates/gourmand-checks/src/checks/trivial_type_aliases.rs
+@@ -204,6 +204,7 @@ mod tests {
+             classification: Some(ExceptionClassification::ByDesign),
+             last_reviewed: None,
+             line: None,
++            pattern: None,
+             source_file: None,
+         };
+         let exc = Exceptions {
+diff --git a/crates/gourmand-checks/src/checks/unhelpful_expect.rs b/crates/gourmand-checks/src/checks/unhelpful_expect.rs
+index b725f63..8e6f440 100644
+--- a/crates/gourmand-checks/src/checks/unhelpful_expect.rs
++++ b/crates/gourmand-checks/src/checks/unhelpful_expect.rs
+@@ -339,6 +339,7 @@ mod tests {
+             classification: Some(ExceptionClassification::ByDesign),
+             last_reviewed: None,
+             line: None,
++            pattern: None,
+             source_file: None,
+         };
+         let exc = Exceptions {
+diff --git a/crates/gourmand-checks/src/context/mod.rs b/crates/gourmand-checks/src/context/mod.rs
+index 4bfdb24..f96154d 100644
+--- a/crates/gourmand-checks/src/context/mod.rs
++++ b/crates/gourmand-checks/src/context/mod.rs
+@@ -39,12 +39,14 @@ pub(crate) type HtmlHeading = (usize, u8, String);
+ /// `HtmlHeading` list per file, `None` if the file could not be read.
+ type HtmlHeadingCache = HashMap<PathBuf, OnceLock<Option<Vec<HtmlHeading>>>>;
+ 
+-/// Flattened exception candidate for fuzzy matching: `(path_pattern, classification, item, line)`.
++/// Flattened exception candidate for fuzzy matching:
++/// `(path_pattern, classification, item, line, finding_pattern)`.
+ type ExceptionCandidate = (
+     String,
+     Option<ExceptionClassification>,
+     Option<String>,
+     Option<usize>,
++    Option<String>,
+ );
+ 
+ /// Result returned by the internal fuzzy exception matcher.
+@@ -789,7 +791,7 @@ impl SharedContext {
+     /// completes, the main thread sends suppression events for any check names that
+     /// returned a skip classification.
+     ///
+-    /// Granular exceptions (those with `item` or `line` set) are excluded — this
++    /// Granular exceptions (those with `item`, `line` or `pattern` set) are excluded — this
+     /// method is for file-level skip decisions only.
+     pub(crate) fn exception_classification(
+         &self,
+@@ -807,7 +809,7 @@ impl SharedContext {
+             .copied()
+             .filter(|&i| {
+                 let exc = &self.exceptions.exceptions[i];
+-                exc.item.is_none() && exc.line.is_none()
++                exc.item.is_none() && exc.line.is_none() && exc.pattern.is_none()
+             })
+             .collect();
+ 
+@@ -1042,7 +1044,7 @@ impl CheckContext {
+         let relative_path = path.strip_prefix(&self.shared.project_root).unwrap_or(path);
+         let path_str = relative_path.to_string_lossy().to_string();
+ 
+-        // Granular exceptions (item/line set) are excluded — this method is for
++        // Granular exceptions (item/line/pattern set) are excluded — this method is for
+         // file-level skip decisions only; granular matching happens in
+         // match_violation_exception after violations are collected.
+         //
+@@ -1058,7 +1060,7 @@ impl CheckContext {
+             .copied()
+             .filter(|&i| {
+                 let exc = &self.shared.exceptions.exceptions[i];
+-                exc.item.is_none() && exc.line.is_none()
++                exc.item.is_none() && exc.line.is_none() && exc.pattern.is_none()
+             })
+             .collect();
+ 
+@@ -1121,17 +1123,18 @@ impl CheckContext {
+     /// classification of the first matching exception, or `None`.
+     ///
+     /// Unlike [`is_check_exception`], this method considers **all** exceptions —
+-    /// including granular ones with `item` or `line` set. It is called after
++    /// including granular ones with `item`, `line` or `pattern` set. It is called after
+     /// violations have been collected, to tag or suppress individual violations.
+     ///
+     /// Matching rules (all conditions must hold):
+     /// - `exc.check == check_name`
+     /// - path matches (direct or crate-relative fallback in cross-crate mode)
+     /// - if `exc.item` is `Some`, `violation.item` must equal it exactly
++    /// - if `exc.pattern` is `Some`, `violation.item` or `violation.message` must contain it
+     /// - if `exc.line` is `Some`, `violation.line` must fall within `±exception_line_fuzziness`
+     ///   lines of the stored exception line; the closest match wins when multiple exceptions
+     ///   compete. File-level exceptions (no `exc.line`) short-circuit on first match.
+-    /// - when both `exc.item` and `exc.line` are `None`, path-only match (file-level)
++    /// - when `exc.item`, `exc.line` and `exc.pattern` are all `None`, path-only match (file-level)
+     ///
+     /// Line matching uses the configurable `exception_line_fuzziness` window (default ±5).
+     /// Small incidental line drift (e.g. a new import above the violation site) no longer
+@@ -1170,6 +1173,7 @@ impl CheckContext {
+                     exc.classification,
+                     exc.item.clone(),
+                     exc.line,
++                    exc.pattern.clone(),
+                 )
+             })
+             .collect();
+@@ -1258,13 +1262,18 @@ impl SharedContext {
+         let mut best_dist = usize::MAX;
+         let mut best_class: Option<ExceptionClassification> = None;
+ 
+-        for (pattern, classification, exc_item, exc_line) in candidates {
++        for (pattern, classification, exc_item, exc_line, exc_pattern) in candidates {
+             if !self.path_matches_pattern(path_str, pattern) {
+                 continue;
+             }
+             if exc_item.is_some() && exc_item.as_deref() != violation.item.as_deref() {
+                 continue;
+             }
++            if let Some(needle) = exc_pattern
++                && !violation.mentions(needle)
++            {
++                continue;
++            }
+             if let Some(exc_ln) = exc_line {
+                 if let Some(viol_ln) = violation.line {
+                     let diff = exc_ln.abs_diff(viol_ln);
+@@ -1625,6 +1634,7 @@ mod tests {
+             last_reviewed: None,
+             item: None,
+             line: None,
++            pattern: None,
+             source_file: None,
+         };
+ 
+@@ -1655,6 +1665,7 @@ mod tests {
+             last_reviewed: None,
+             item: None,
+             line: None,
++            pattern: None,
+             source_file: None,
+         };
+ 
+@@ -1682,6 +1693,7 @@ mod tests {
+             last_reviewed: None,
+             item: None,
+             line: None,
++            pattern: None,
+             source_file: None,
+         };
+ 
+@@ -1722,6 +1734,7 @@ mod tests {
+             last_reviewed: None,
+             item: None,
+             line: None,
++            pattern: None,
+             source_file: None,
+         };
+ 
+@@ -1750,6 +1763,7 @@ mod tests {
+             last_reviewed: None,
+             item: Some("MyStruct::the_method".to_string()),
+             line: None,
++            pattern: None,
+             source_file: None,
+         };
+ 
+@@ -1787,6 +1801,7 @@ mod tests {
+             last_reviewed: None,
+             item: None,
+             line: Some(42),
++            pattern: None,
+             source_file: None,
+         };
+ 
+@@ -1840,6 +1855,7 @@ mod tests {
+             last_reviewed: None,
+             item: Some("MyStruct::target".to_string()),
+             line: None,
++            pattern: None,
+             source_file: None,
+         };
+ 
+@@ -1880,6 +1896,7 @@ mod tests {
+             last_reviewed: None,
+             item: None,
+             line: Some(42),
++            pattern: None,
+             source_file: None,
+         };
+ 
+@@ -1931,6 +1948,7 @@ mod tests {
+             last_reviewed: None,
+             item: None,
+             line: Some(42),
++            pattern: None,
+             source_file: None,
+         };
+ 
+@@ -1959,6 +1977,7 @@ mod tests {
+             last_reviewed: None,
+             item: None,
+             line: Some(42),
++            pattern: None,
+             source_file: None,
+         };
+ 
+@@ -1989,6 +2008,7 @@ mod tests {
+             last_reviewed: None,
+             item: None,
+             line: Some(40),
++            pattern: None,
+             source_file: None,
+         };
+         let exc_44 = CheckException {
+@@ -1999,6 +2019,7 @@ mod tests {
+             last_reviewed: None,
+             item: None,
+             line: Some(44),
++            pattern: None,
+             source_file: None,
+         };
+ 
+@@ -2027,6 +2048,7 @@ mod tests {
+             last_reviewed: None,
+             item: None,
+             line: Some(42),
++            pattern: None,
+             source_file: None,
+         };
+ 
+@@ -2061,6 +2083,7 @@ mod tests {
+             last_reviewed: None,
+             item: Some("Foo::bar".to_string()),
+             line: Some(55),
++            pattern: None,
+             source_file: None,
+         };
+ 
+@@ -2101,6 +2124,7 @@ mod tests {
+             last_reviewed: None,
+             item: None,
+             line: None,
++            pattern: None,
+             source_file: None,
+         };
+ 
+@@ -2142,6 +2166,7 @@ mod tests {
+             last_reviewed: None,
+             item: Some("MyStruct::target".to_string()),
+             line: None,
++            pattern: None,
+             source_file: None,
+         };
+ 
+@@ -2185,6 +2210,7 @@ mod tests {
+             last_reviewed: None,
+             item: None,
+             line: Some(77),
++            pattern: None,
+             source_file: None,
+         };
+ 
+@@ -2271,6 +2297,7 @@ mod tests {
+             last_reviewed: None,
+             item: None,
+             line: None,
++            pattern: None,
+             source_file: None,
+         };
+ 
+@@ -2332,4 +2359,85 @@ mod tests {
+             "config_dir must be None when None was passed"
+         );
+     }
++
++    fn pattern_exception(pattern: &str) -> CheckException {
++        CheckException {
++            check: "lint_suppression".to_string(),
++            path: "src/app.py".to_string(),
++            justification: "pattern-scoped".to_string(),
++            classification: Some(ExceptionClassification::ByDesign),
++            last_reviewed: None,
++            item: None,
++            line: None,
++            pattern: Some(pattern.to_string()),
++            source_file: None,
++        }
++    }
++
++    #[test]
++    fn pattern_exception_suppresses_only_matching_message() {
++        let crate_dir = make_test_root();
++        let crate_root = crate_dir.path().to_path_buf();
++        let file_path = crate_root.join("src").join("app.py");
++
++        let ctx = make_per_crate_ctx(crate_root, vec![pattern_exception("noqa: F401")]);
++
++        let excepted = Violation::new(&file_path, 3, "suppression comment: # noqa: F401");
++        let other = Violation::new(&file_path, 9, "suppression comment: # noqa: E501");
++
++        assert!(
++            ctx.match_violation_exception(&excepted, "lint_suppression")
++                .is_some(),
++            "finding whose message contains the pattern must be suppressed"
++        );
++        assert!(
++            ctx.match_violation_exception(&other, "lint_suppression")
++                .is_none(),
++            "finding in the same file without the pattern must still fire"
++        );
++    }
++
++    #[test]
++    fn pattern_exception_matches_item() {
++        let crate_dir = make_test_root();
++        let crate_root = crate_dir.path().to_path_buf();
++        let file_path = crate_root.join("src").join("app.py");
++
++        let ctx = make_per_crate_ctx(crate_root, vec![pattern_exception("_poll")]);
++
++        let excepted = Violation::new(&file_path, 3, "helper used once").with_item("_poll");
++        let other = Violation::new(&file_path, 9, "helper used once").with_item("_units");
++
++        assert!(
++            ctx.match_violation_exception(&excepted, "lint_suppression")
++                .is_some(),
++            "finding whose item contains the pattern must be suppressed"
++        );
++        assert!(
++            ctx.match_violation_exception(&other, "lint_suppression")
++                .is_none(),
++            "finding for another item must still fire"
++        );
++    }
++
++    #[test]
++    fn pattern_exception_does_not_skip_whole_file() {
++        let crate_dir = make_test_root();
++        let crate_root = crate_dir.path().to_path_buf();
++        let file_path = crate_root.join("src").join("app.py");
++
++        let ctx = make_per_crate_ctx(crate_root, vec![pattern_exception("noqa: F401")]);
++
++        assert!(
++            ctx.is_check_exception(&file_path, "lint_suppression")
++                .is_none(),
++            "a pattern-scoped exception is granular and must not skip the file"
++        );
++        assert!(
++            ctx.shared()
++                .exception_classification(&file_path, "lint_suppression")
++                .is_none(),
++            "shared file-level lookup must also ignore pattern-scoped exceptions"
++        );
++    }
+ }
+diff --git a/crates/gourmand-core/src/config/mod.rs b/crates/gourmand-core/src/config/mod.rs
+index f5f09a6..135ec87 100644
+--- a/crates/gourmand-core/src/config/mod.rs
++++ b/crates/gourmand-core/src/config/mod.rs
+@@ -451,6 +451,7 @@ impl Config {
+                         last_reviewed: loc.last_reviewed,
+                         item: loc.item,
+                         line: loc.line,
++                        pattern: loc.pattern,
+                         source_file: Some(path.clone()),
+                     });
+                 }
+diff --git a/crates/gourmand-core/src/config/models.rs b/crates/gourmand-core/src/config/models.rs
+index 954bb27..546a851 100644
+--- a/crates/gourmand-core/src/config/models.rs
++++ b/crates/gourmand-core/src/config/models.rs
+@@ -915,6 +915,11 @@ pub struct CheckException {
+     /// line can be updated to the current position.
+     #[serde(default)]
+     pub line: Option<usize>,
++    /// Literal substring that identifies the finding this exception targets.
++    /// When `Some`, the exception only suppresses violations whose `item` or
++    /// `message` contains it. When `None`, any finding matches.
++    #[serde(default)]
++    pub pattern: Option<String>,
+     /// The file this exception was loaded from. Set post-deserialization; not serialized.
+     ///
+     /// `None` for system-embedded exceptions. `Some(path)` for project exceptions,
+@@ -938,6 +943,8 @@ pub(crate) struct ExceptionLocation {
+     #[serde(default)]
+     pub(crate) line: Option<usize>,
+     #[serde(default)]
++    pub(crate) pattern: Option<String>,
++    #[serde(default)]
+     pub(crate) last_reviewed: Option<String>,
+ }
+ 
+@@ -1456,6 +1463,44 @@ mod tests {
+         assert_eq!(exceptions.exceptions[0].item, None);
+     }
+ 
++    #[test]
++    fn check_exception_with_pattern_parses_correctly() {
++        let toml_input = r#"
++            [[exceptions]]
++            check = "lint_suppression"
++            path = "src/app.py"
++            justification = "Monkeypatch for test isolation"
++            classification = "by_design"
++            pattern = "type: ignore[method-assign]"
++        "#;
++
++        let exceptions: Exceptions = toml::from_str(toml_input)
++            .expect("BUG: toml parse failed for exception-with-pattern fixture");
++
++        assert_eq!(
++            exceptions.exceptions[0].pattern.as_deref(),
++            Some("type: ignore[method-assign]")
++        );
++        assert_eq!(exceptions.exceptions[0].item, None);
++        assert_eq!(exceptions.exceptions[0].line, None);
++    }
++
++    #[test]
++    fn check_exception_without_pattern_defaults_to_none() {
++        let toml_input = r#"
++            [[exceptions]]
++            check = "lint_suppression"
++            path = "src/app.py"
++            justification = "Whole file"
++            classification = "by_design"
++        "#;
++
++        let exceptions: Exceptions = toml::from_str(toml_input)
++            .expect("BUG: toml parse failed for exception-without-pattern fixture");
++
++        assert_eq!(exceptions.exceptions[0].pattern, None);
++    }
++
+     #[test]
+     fn check_exception_with_item_and_line_parses_correctly() {
+         let toml_input = r#"
+@@ -1513,6 +1558,7 @@ mod tests {
+             last_reviewed: None,
+             item: None,
+             line: None,
++            pattern: None,
+             source_file: None,
+         };
+         let project_entry = CheckException {
+@@ -1523,6 +1569,7 @@ mod tests {
+             last_reviewed: None,
+             item: Some("my_function".to_string()),
+             line: Some(42),
++            pattern: None,
+             source_file: None,
+         };
+ 
+diff --git a/crates/gourmand-core/src/violation.rs b/crates/gourmand-core/src/violation.rs
+index a5d66fd..1189b78 100644
+--- a/crates/gourmand-core/src/violation.rs
++++ b/crates/gourmand-core/src/violation.rs
+@@ -86,6 +86,15 @@ impl Violation {
+         self.item = Some(name.into());
+         self
+     }
++
++    /// Whether `needle` occurs in this violation's item or message.
++    ///
++    /// Used for `pattern`-scoped exception matching: the pattern names the
++    /// finding (a function, a hook id, a suppression comment), not the file.
++    #[must_use]
++    pub fn mentions(&self, needle: &str) -> bool {
++        self.message.contains(needle) || self.item.as_deref().is_some_and(|i| i.contains(needle))
++    }
+ }
+ 
+ impl std::fmt::Display for Violation {
+@@ -132,6 +141,24 @@ mod tests {
+         assert!(v.item.is_none());
+     }
+ 
++    #[test]
++    fn mentions_matches_message_substring() {
++        let v = Violation::new(
++            "app.py",
++            3,
++            "lint suppression: # type: ignore[method-assign]",
++        );
++        assert!(v.mentions("type: ignore[method-assign]"));
++        assert!(!v.mentions("noqa: F401"));
++    }
++
++    #[test]
++    fn mentions_matches_item_substring() {
++        let v = Violation::new("lib.py", 3, "helper called once").with_item("Parser._poll");
++        assert!(v.mentions("_poll"));
++        assert!(!v.mentions("_units"));
++    }
++
+     #[test]
+     fn display_includes_item_with_line() {
+         let path = PathBuf::from("src/lib.rs");
+diff --git a/crates/gourmand/src/audit/full.rs b/crates/gourmand/src/audit/full.rs
+index 4f09164..332613c 100644
+--- a/crates/gourmand/src/audit/full.rs
++++ b/crates/gourmand/src/audit/full.rs
+@@ -571,7 +571,7 @@ pub(crate) fn audit_check_exception(
+         &exception.path,
+     ) {
+         Ok(all_violations) => {
+-            // Post-filter by item and line when the exception is granular.
++            // Post-filter by item, line and pattern when the exception is granular.
+             // collect_exception_violations returns all violations matching the path
+             // pattern; we narrow to only those this specific exception targets.
+             let fuzziness = config.thresholds.exception_line_fuzziness;
+@@ -588,6 +588,11 @@ pub(crate) fn audit_check_exception(
+                     {
+                         return false;
+                     }
++                    if let Some(needle) = &exception.pattern
++                        && !v.mentions(needle)
++                    {
++                        return false;
++                    }
+                     true
+                 })
+                 .collect();
+@@ -918,6 +923,7 @@ mod tests {
+             path: "src/lib.rs".to_owned(),
+             item: None,
+             line: None,
++            pattern: None,
+             justification: "test".to_owned(),
+             classification: Some(gourmand_core::config::ExceptionClassification::ByDesign),
+             source_file,
+diff --git a/crates/gourmand/src/audit/ledger_io.rs b/crates/gourmand/src/audit/ledger_io.rs
+index cc5918c..89e4011 100644
+--- a/crates/gourmand/src/audit/ledger_io.rs
++++ b/crates/gourmand/src/audit/ledger_io.rs
+@@ -323,6 +323,7 @@ mod tests {
+             last_reviewed: None,
+             item: None,
+             line: None,
++            pattern: None,
+             source_file: Some(PathBuf::from(source_filename)),
+         }
+     }
+@@ -414,6 +415,7 @@ mod tests {
+             last_reviewed: None,
+             item: None,
+             line: None,
++            pattern: None,
+             source_file: None,
+         };
+         let mut exceptions = config::Exceptions::default();
+diff --git a/crates/gourmand/src/audit/migrate_legacy.rs b/crates/gourmand/src/audit/migrate_legacy.rs
+index 7c2410d..7130708 100644
+--- a/crates/gourmand/src/audit/migrate_legacy.rs
++++ b/crates/gourmand/src/audit/migrate_legacy.rs
+@@ -528,6 +528,7 @@ last_reviewed = "2026-04-01"
+             last_reviewed: Some("2026-04-01".to_string()),
+             item: None,
+             line: None,
++            pattern: None,
+             source_file: Some(exc_file.clone()),
+         };
+         let exc2 = CheckException {
+@@ -538,6 +539,7 @@ last_reviewed = "2026-04-01"
+             last_reviewed: Some("2026-04-02".to_string()),
+             item: None,
+             line: None,
++            pattern: None,
+             source_file: Some(exc_file.clone()),
+         };
+         let exceptions = vec![exc1, exc2];
+diff --git a/crates/gourmand/src/audit/predicates.rs b/crates/gourmand/src/audit/predicates.rs
+index dbfd93a..ed9e624 100644
+--- a/crates/gourmand/src/audit/predicates.rs
++++ b/crates/gourmand/src/audit/predicates.rs
+@@ -299,6 +299,7 @@ mod tests {
+             last_reviewed: None,
+             item: None,
+             line: None,
++            pattern: None,
+             source_file: Some(source_file),
+         }
+     }
+diff --git a/crates/gourmand/src/audit/show_next.rs b/crates/gourmand/src/audit/show_next.rs
+index 916971e..f8378bd 100644
+--- a/crates/gourmand/src/audit/show_next.rs
++++ b/crates/gourmand/src/audit/show_next.rs
+@@ -868,6 +868,7 @@ mod tests {
+             last_reviewed: None,
+             item: item.map(str::to_string),
+             line,
++            pattern: None,
+             source_file: Some(PathBuf::from("test.toml")),
+         }
+     }
+diff --git a/crates/gourmand/src/main.rs b/crates/gourmand/src/main.rs
+index dfad1e5..aa8ff3e 100644
+--- a/crates/gourmand/src/main.rs
++++ b/crates/gourmand/src/main.rs
+@@ -2043,6 +2043,7 @@ mod tests {
+                 last_reviewed: None,
+                 item: None,
+                 line: None,
++                pattern: None,
+                 source_file: Some(std::path::PathBuf::from("gourmand-exceptions.toml")),
+             })
+             .collect();
+@@ -2096,6 +2097,7 @@ mod tests {
+             last_reviewed: None,
+             item: None,
+             line: None,
++            pattern: None,
+             source_file: source_file.map(std::path::PathBuf::from),
+         }
+     }
+@@ -2182,6 +2184,7 @@ mod tests {
+                 last_reviewed: None,
+                 item: None,
+                 line: None,
++                pattern: None,
+                 source_file: Some(std::path::PathBuf::from(
+                     ".gourmand-exceptions.d/deferred_work--src-file.toml",
+                 )),
+diff --git a/crates/gourmand/src/migrate.rs b/crates/gourmand/src/migrate.rs
+index b2c16ec..13dd634 100644
+--- a/crates/gourmand/src/migrate.rs
++++ b/crates/gourmand/src/migrate.rs
+@@ -165,7 +165,7 @@ pub(crate) fn compute_output_filenames(entries: &[ExceptionFilenameKey]) -> Resu
+ /// Format a single exception as a flat TOML file (no `[[exceptions]]` header).
+ ///
+ /// Field order: `check`, `path`, `item` (if Some), `line` (if Some),
+-/// `justification`, `classification`, `last_reviewed` (if Some).
++/// `pattern` (if Some), `justification`, `classification`, `last_reviewed` (if Some).
+ fn format_exception_toml(exc: &CheckException) -> String {
+     let mut out = String::new();
+     writeln!(out, "check = {:?}", exc.check).expect("BUG: writing to a String is infallible");
+@@ -176,6 +176,9 @@ fn format_exception_toml(exc: &CheckException) -> String {
+     if let Some(line) = exc.line {
+         writeln!(out, "line = {line}").expect("BUG: writing to a String is infallible");
+     }
++    if let Some(ref pattern) = exc.pattern {
++        writeln!(out, "pattern = {pattern:?}").expect("BUG: writing to a String is infallible");
++    }
+     writeln!(out, "justification = {:?}", exc.justification)
+         .expect("BUG: writing to a String is infallible");
+     if let Some(classification) = exc.classification {
+@@ -478,6 +481,7 @@ mod tests {
+             last_reviewed: None,
+             item: None,
+             line: None,
++            pattern: None,
+             source_file: None,
+         };
+         let out = format_exception_toml(&exc);
+@@ -499,6 +503,7 @@ mod tests {
+             last_reviewed: Some("2026-04-25".to_string()),
+             item: Some("last_commit_date".to_string()),
+             line: Some(42),
++            pattern: None,
+             source_file: None,
+         };
+         let out = format_exception_toml(&exc);
+diff --git a/crates/gourmand/src/migrate_format.rs b/crates/gourmand/src/migrate_format.rs
+index 37aa3fd..92b94cb 100644
+--- a/crates/gourmand/src/migrate_format.rs
++++ b/crates/gourmand/src/migrate_format.rs
+@@ -210,6 +210,9 @@ fn format_check_first_toml(
+         if let Some(line) = exc.line {
+             writeln!(out, "line = {line}").expect("BUG: writing to String is infallible");
+         }
++        if let Some(ref pattern) = exc.pattern {
++            writeln!(out, "pattern = {pattern:?}").expect("BUG: writing to String is infallible");
++        }
+         writeln!(out, "justification = {:?}", exc.justification)
+             .expect("BUG: writing to String is infallible");
+         if let Some(cls) = exc.classification

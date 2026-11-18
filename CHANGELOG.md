@@ -29,6 +29,18 @@ All notable changes to this project are documented here. The format follows
   `.github/workflows/constitution.yml`.
 - Dependabot auto-merges GitHub Actions minor and patch updates.
 
+### Fixed
+
+- `pattern` on a `[[exceptions]]` entry is now honoured. Upstream v0.16.5 has
+  no such field and serde dropped it silently, so an exception written for one
+  finding suppressed every finding of that check in the file. The image now
+  builds from the v0.16.5 tag plus `patches/0001-honour-exception-pattern.patch`:
+  an entry with a `pattern` suppresses only findings whose item or message
+  contains it as a literal substring, and no longer skips the whole file. The
+  patch's tests run in the image build, and `tests/image/exception-pattern.sh`
+  checks the built binary. Fleet repos whose `pattern` entries named the
+  wrong text will report the findings those entries used to hide.
+
 ## [1.0.0] - 2026-09-19
 
 First tagged release. Entries accrue from 2026-09-19 forward (RT #1484).
