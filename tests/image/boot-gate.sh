@@ -38,3 +38,5 @@ chmod -R a+rwX "$fixture"
 
 podman run --rm -v "$fixture:/workspace:Z" "$IMAGE" check --full /workspace >/dev/null
 echo "gourmand boot gate: ok"
+
+bash "$(dirname "$0")/exception-pattern.sh"

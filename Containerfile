@@ -25,9 +25,26 @@ FROM quay.io/hummingbird/rust:latest-builder AS builder
 # Adopters cut over one repo at a time via gatehouse v0.6.0; see RT #1482.
 #
 # Upstream requires rustc >= 1.95; the builder image above ships 1.98.1.
+#
+# patches/ carries fixes the fleet needs before upstream has them. Each one is
+# written against the pinned tag, so bumping UPSTREAM_VERSION fails here until
+# the patch is rebased or dropped -- loudly, never by building without it. The
+# tests a patch adds run before the install (tests/build/patch-tests.sh), so a red
+# or missing patch never ships; they build with -j 2 because gourmand-checks'
+# lib and lib-test rustc processes side by side get a builder OOM-killed.
+#
+#   0001: honour `pattern` on [[exceptions]] entries. v0.16.5 drops the key
+#         silently, so an exception written for one finding suppressed every
+#         finding of that check in the file.
 ARG UPSTREAM_VERSION
-RUN cargo install --git https://gitlab.com/mattdm/gourmand.git \
-    --tag "v${UPSTREAM_VERSION}"
+WORKDIR /build
+COPY patches/ patches/
+COPY tests/build/patch-tests.sh ./
+RUN git clone --quiet --depth 1 --branch "v${UPSTREAM_VERSION}" \
+        https://gitlab.com/mattdm/gourmand.git gourmand \
+    && git -C gourmand apply --verbose "$PWD"/patches/*.patch \
+    && sh patch-tests.sh \
+    && cargo install --locked --path gourmand/crates/gourmand
 
 FROM quay.io/hummingbird/rust:latest
 
