@@ -1,4 +1,4 @@
-From a935e19fd47881845a5080a34c8ac8326d21eaa7 Mon Sep 17 00:00:00 2001
+From e1a25d8685a508176ecf6ddaf07eb5b949f30734 Mon Sep 17 00:00:00 2001
 From: Crunchtools <noreply@crunchtools.com>
 Date: Wed, 18 Nov 2026 04:25:17 +0000
 Subject: [PATCH] Honour `pattern` on exception entries
@@ -141,7 +141,7 @@ index b725f63..8e6f440 100644
          };
          let exc = Exceptions {
 diff --git a/crates/gourmand-checks/src/context/mod.rs b/crates/gourmand-checks/src/context/mod.rs
-index 4bfdb24..f96154d 100644
+index 4bfdb24..a7e0d70 100644
 --- a/crates/gourmand-checks/src/context/mod.rs
 +++ b/crates/gourmand-checks/src/context/mod.rs
 @@ -39,12 +39,14 @@ pub(crate) type HtmlHeading = (usize, u8, String);
@@ -409,7 +409,7 @@ index 4bfdb24..f96154d 100644
 +    }
 +
 +    #[test]
-+    fn pattern_exception_suppresses_only_matching_message() {
++    fn pattern_scoped_exception_suppresses_only_matching_message() {
 +        let crate_dir = make_test_root();
 +        let crate_root = crate_dir.path().to_path_buf();
 +        let file_path = crate_root.join("src").join("app.py");
@@ -432,7 +432,7 @@ index 4bfdb24..f96154d 100644
 +    }
 +
 +    #[test]
-+    fn pattern_exception_matches_item() {
++    fn pattern_scoped_exception_matches_item() {
 +        let crate_dir = make_test_root();
 +        let crate_root = crate_dir.path().to_path_buf();
 +        let file_path = crate_root.join("src").join("app.py");
@@ -455,7 +455,7 @@ index 4bfdb24..f96154d 100644
 +    }
 +
 +    #[test]
-+    fn pattern_exception_does_not_skip_whole_file() {
++    fn pattern_scoped_exception_does_not_skip_whole_file() {
 +        let crate_dir = make_test_root();
 +        let crate_root = crate_dir.path().to_path_buf();
 +        let file_path = crate_root.join("src").join("app.py");
@@ -488,7 +488,7 @@ index f5f09a6..135ec87 100644
                      });
                  }
 diff --git a/crates/gourmand-core/src/config/models.rs b/crates/gourmand-core/src/config/models.rs
-index 954bb27..546a851 100644
+index 954bb27..b244f79 100644
 --- a/crates/gourmand-core/src/config/models.rs
 +++ b/crates/gourmand-core/src/config/models.rs
 @@ -915,6 +915,11 @@ pub struct CheckException {
@@ -517,7 +517,7 @@ index 954bb27..546a851 100644
      }
  
 +    #[test]
-+    fn check_exception_with_pattern_parses_correctly() {
++    fn pattern_scoped_exception_parses_correctly() {
 +        let toml_input = r#"
 +            [[exceptions]]
 +            check = "lint_suppression"
@@ -539,7 +539,7 @@ index 954bb27..546a851 100644
 +    }
 +
 +    #[test]
-+    fn check_exception_without_pattern_defaults_to_none() {
++    fn pattern_scoped_field_defaults_to_none() {
 +        let toml_input = r#"
 +            [[exceptions]]
 +            check = "lint_suppression"
@@ -574,7 +574,7 @@ index 954bb27..546a851 100644
          };
  
 diff --git a/crates/gourmand-core/src/violation.rs b/crates/gourmand-core/src/violation.rs
-index a5d66fd..1189b78 100644
+index a5d66fd..eb6ee15 100644
 --- a/crates/gourmand-core/src/violation.rs
 +++ b/crates/gourmand-core/src/violation.rs
 @@ -86,6 +86,15 @@ impl Violation {
@@ -598,7 +598,7 @@ index a5d66fd..1189b78 100644
      }
  
 +    #[test]
-+    fn mentions_matches_message_substring() {
++    fn pattern_scoped_mentions_matches_message_substring() {
 +        let v = Violation::new(
 +            "app.py",
 +            3,
@@ -609,7 +609,7 @@ index a5d66fd..1189b78 100644
 +    }
 +
 +    #[test]
-+    fn mentions_matches_item_substring() {
++    fn pattern_scoped_mentions_matches_item_substring() {
 +        let v = Violation::new("lib.py", 3, "helper called once").with_item("Parser._poll");
 +        assert!(v.mentions("_poll"));
 +        assert!(!v.mentions("_units"));

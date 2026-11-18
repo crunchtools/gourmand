@@ -44,7 +44,7 @@ RUN git clone --quiet --depth 1 --branch "v${UPSTREAM_VERSION}" \
     && git -C gourmand apply --verbose ../patches/*.patch \
     && CARGO_PROFILE_TEST_DEBUG=0 cargo test --locked --lib -j 2 \
         --manifest-path gourmand/Cargo.toml -p gourmand-core -p gourmand-checks -- \
-        pattern_exception mentions_matches exception_with_pattern without_pattern \
+        pattern_scoped \
     && cargo install --locked --path gourmand/crates/gourmand
 
 FROM quay.io/hummingbird/rust:latest
