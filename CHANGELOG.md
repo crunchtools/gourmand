@@ -35,10 +35,12 @@ All notable changes to this project are documented here. The format follows
   no such field and serde dropped it silently, so an exception written for one
   finding suppressed every finding of that check in the file. The image now
   builds from the v0.16.5 tag plus `patches/0001-honour-exception-pattern.patch`:
-  an entry with a `pattern` suppresses only findings whose item or message
-  contains it as a literal substring, and no longer skips the whole file. The
-  patch's tests run in the image build, and `tests/image/exception-pattern.sh`
-  checks the built binary. Fleet repos whose `pattern` entries named the
+  an entry with a `pattern` suppresses only findings whose item contains it
+  as a literal substring (the message, for a finding with no item), and no
+  longer skips the whole file. Entries without `pattern` keep their path-wide
+  behaviour. The patch's tests run in the image build
+  (`tests/build/patch-tests.sh`, which fails if they match nothing), and
+  `tests/image/exception-pattern.sh` checks the built binary. Fleet repos whose `pattern` entries named the
   wrong text will report the findings those entries used to hide.
 
 ## [1.0.0] - 2026-09-19

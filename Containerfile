@@ -29,9 +29,9 @@ FROM quay.io/hummingbird/rust:latest-builder AS builder
 # patches/ carries fixes the fleet needs before upstream has them. Each one is
 # written against the pinned tag, so bumping UPSTREAM_VERSION fails here until
 # the patch is rebased or dropped -- loudly, never by building without it. The
-# tests a patch adds run before the install, so a red patch never ships; they
-# build as --lib with -j 2 because gourmand-checks' lib and lib-test rustc
-# processes running side by side are enough to get a builder OOM-killed.
+# tests a patch adds run before the install (tests/build/patch-tests.sh), so a red
+# or missing patch never ships; they build with -j 2 because gourmand-checks'
+# lib and lib-test rustc processes side by side get a builder OOM-killed.
 #
 #   0001: honour `pattern` on [[exceptions]] entries. v0.16.5 drops the key
 #         silently, so an exception written for one finding suppressed every
@@ -39,14 +39,11 @@ FROM quay.io/hummingbird/rust:latest-builder AS builder
 ARG UPSTREAM_VERSION
 WORKDIR /build
 COPY patches/ patches/
+COPY tests/build/patch-tests.sh ./
 RUN git clone --quiet --depth 1 --branch "v${UPSTREAM_VERSION}" \
         https://gitlab.com/mattdm/gourmand.git gourmand \
     && git -C gourmand apply --verbose "$PWD"/patches/*.patch \
-    && CARGO_PROFILE_TEST_DEBUG=0 cargo test --locked --lib -j 2 \
-        --manifest-path gourmand/Cargo.toml -p gourmand-core -p gourmand-checks -- \
-        pattern_scoped \
-    && CARGO_PROFILE_TEST_DEBUG=0 cargo test --locked -j 2 \
-        --manifest-path gourmand/Cargo.toml -p gourmand --bin gourmand -- pattern_scoped \
+    && sh patch-tests.sh \
     && cargo install --locked --path gourmand/crates/gourmand
 
 FROM quay.io/hummingbird/rust:latest
