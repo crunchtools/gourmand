@@ -3,8 +3,8 @@
 # one exception whose `pattern` names only the first: the second must still be
 # reported. Stock v0.16.5 drops `pattern` and suppresses both, which is the bug
 # this guards against coming back on an UPSTREAM_VERSION bump.
+# Runs INSIDE the image (sdlc `exception-pattern` check).
 set -euo pipefail
-: "${IMAGE:?set IMAGE to the image under test}"
 
 fixture="$(mktemp -d)"
 trap 'rm -rf "$fixture"' EXIT
@@ -29,12 +29,10 @@ pattern = "noqa: F401"
 justification = "Re-export kept for the public import path"
 classification = "by_design"
 TOML
-chmod -R a+rwX "$fixture"
 
 # `check` exits 1 when it reports a finding, which this test expects to happen.
 status=0
-report="$(podman run --rm -v "$fixture:/workspace:Z" "$IMAGE" \
-    check --full --filter EV001 --format json /workspace)" || status=$?
+report="$(gourmand check --full --filter EV001 --format json "$fixture")" || status=$?
 if [ "$status" -gt 1 ]; then
     echo "exception pattern: gourmand exited $status" >&2
     exit "$status"

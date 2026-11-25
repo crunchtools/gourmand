@@ -1,12 +1,11 @@
 #!/usr/bin/env bash
-# Boot gate for the gourmand image. IMAGE is the pushed digest under test.
+# Boot gate for the gourmand image; runs INSIDE it (sdlc `boot-gate` check).
 # Fails when the binary does not start or cannot analyse a project, which is
 # what every consumer (the fleet Gourmand gate, python-sdlc) does with it:
 # `check --full` over a clean, minimal project must exit 0.
 set -euo pipefail
-: "${IMAGE:?set IMAGE to the image under test}"
 
-podman run --rm "$IMAGE" --version
+gourmand --version
 
 fixture="$(mktemp -d)"
 trap 'rm -rf "$fixture"' EXIT
@@ -34,9 +33,5 @@ repos:
         files: \.py$
         stages: [pre-commit, pre-merge-commit]
 YAML
-chmod -R a+rwX "$fixture"
-
-podman run --rm -v "$fixture:/workspace:Z" "$IMAGE" check --full /workspace >/dev/null
+gourmand check --full "$fixture" >/dev/null
 echo "gourmand boot gate: ok"
-
-bash "$(dirname "$0")/exception-pattern.sh"
