@@ -4,5 +4,23 @@ repo-kinds = ["container-image"]
 [tool.sdlc.image]
 # Written by crunchtools/sdlc's scripts/convert_repo.py: moved from the workflows.
 image = "quay.io/crunchtools/gourmand"
-boot = "command"
-boot-command = "bash tests/image/boot-gate.sh"
+boot = "none"
+boot-none-reason = "gourmand is a CLI, not a service: the gourmand-image, boot-gate and exception-pattern repo checks run it in the image the PR builds"
+
+[tool.sdlc.ci]
+checks = ["gourmand-image", "boot-gate", "exception-pattern"]
+
+[tool.sdlc.ci.gourmand-image]
+kind = "image-build"
+
+# These run in the image the PR builds, with the fixtures made under /tmp
+# (the repo is read-only). The shell is the image's own bash.
+[tool.sdlc.ci.boot-gate]
+kind = "command"
+image = "localhost/gourmand:sdlc"
+argv = ["bash", "tests/image/boot-gate.sh"]
+
+[tool.sdlc.ci.exception-pattern]
+kind = "command"
+image = "localhost/gourmand:sdlc"
+argv = ["bash", "tests/image/exception-pattern.sh"]
